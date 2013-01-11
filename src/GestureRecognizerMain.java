@@ -269,14 +269,14 @@ public class GestureRecognizerMain extends JPanel {
 			//Check input
 			if(!nameText.getText().equals("")){
 				//Create the templates in both files based on the raw input points
-				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, true), "resampledFirstTemplates.txt");
-				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, false), "resampledLastTemplates.txt");
+				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, true), "ResampledFirstTemplates.txt");
+				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, false), "ResampledLastTemplates.txt");
 				
 				resampledFirstTemplates.clear();
 				resampledLastTemplates.clear();
 				
-				readTemplates("resampledFirstTemplates.txt", true, resampledFirstTemplates);
-				readTemplates("resampledLastTemplates.txt", false, resampledLastTemplates);
+				readTemplates("ResampledFirstTemplates.txt", true, resampledFirstTemplates);
+				readTemplates("ResampledLastTemplates.txt", false, resampledLastTemplates);
 				
 				listUniqueGestures();
 				//Notify the user
