@@ -40,7 +40,8 @@ public class GestureRecognizerMain extends JPanel {
     private static Dimension areaSize = new Dimension(600, 600);
     
     private static JButton saveButton;
-    private static JLabel resultLabel;
+    private static JLabel resampledFirstLabel;
+	private static JLabel resampledLastLabel;
     private static JFrame frame;
 	private static JLabel templateLabel;
 
@@ -59,7 +60,8 @@ public class GestureRecognizerMain extends JPanel {
     private static ArrayList<Point> points = new ArrayList<Point>();
     private static ArrayList<Point> prvPoints;
     //Holds the predefined templates
-    private static ArrayList<Template> templates = new ArrayList<Template>();
+    private static ArrayList<Template> resampledFirstTemplates = new ArrayList<Template>();
+    private static ArrayList<Template> resampledLastTemplates = new ArrayList<Template>();
 
     public GestureRecognizerMain() {
         setBackground(Color.white);
@@ -118,14 +120,9 @@ public class GestureRecognizerMain extends JPanel {
             if(!points.isEmpty()){
             	prvPoints = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
             	Collections.copy(prvPoints, points);
-            	//ArrayList<Point> tmp = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
-            	//Collections.copy(tmp, points);
-            	
-            	//Print out the match
-            	//System.out.println(recognize(prvPoints));
             	
             	System.out.println("Prv points: "+prvPoints.size());
-            	resultLabel.setText(recognize(prvPoints).toString());
+            	recognize(prvPoints);
             }
             
           //Clear from previous run
@@ -133,26 +130,44 @@ public class GestureRecognizerMain extends JPanel {
         }
     }
     
-    public Gesture recognize(ArrayList<Point> points){    
-    	//1. Resample points to equidistance
-    	points = GestureUtil.resample(points, N);
-    	//2. Rotate to 0 degree
-    	points = GestureUtil.rotate(points);
-    	//3. Scale to square
-    	points = GestureUtil.scale(points, squareSize);
-    	
-    	
-    	
-    	//4. Translate to origin
-    	points = GestureUtil.translate(points);
-    	
+    public ArrayList<Point> processPoints(ArrayList<Point> points, boolean resampleFirst){
+		ArrayList<Point> newPoints = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
+		Collections.copy(newPoints, points);
+		
+		if(resampleFirst){
+			//Resample points to equidistance
+			newPoints = GestureUtil.resample(newPoints, N);
+		}
+		
+		//Rotate to 0 degree
+		newPoints = GestureUtil.rotate(newPoints);
+		
+		//Scale to square
+		newPoints = GestureUtil.scale(newPoints, squareSize);
+		
+		//Translate to origin
+		newPoints = GestureUtil.translate(newPoints);
+		
+		if(!resampleFirst){
+			//Resample last
+			newPoints = GestureUtil.resample(newPoints, N);
+		}
+		
+		return newPoints;
+	}
+    
+    public Gesture recognize(ArrayList<Point> points, boolean resampleFirst){    
     	double best = Double.MAX_VALUE;
     	int t = -1;
     	    	
     	//Find a match
-    	for(int i=0; i<templates.size(); i++){
-    		//System.out.println("Comparing to template: "+templates.get(i).name);
-    		double d = GestureUtil.distanceAtBestAngle(points, templates.get(i), -theta, theta, dTheta);
+    	for(int i=0; i<resampledFirstTemplates.size(); i++){
+    		double d = 0.0;
+    		if(resampleFirst){
+    			d = GestureUtil.distanceAtBestAngle(points, resampledFirstTemplates.get(i), -theta, theta, dTheta);
+    		} else {
+    			d = GestureUtil.distanceAtBestAngle(points, resampledLastTemplates.get(i), -theta, theta, dTheta);
+    		}
     		
     		if(d < best){
     			best = d;
@@ -166,28 +181,45 @@ public class GestureRecognizerMain extends JPanel {
     	
     	if(t > -1 && score > 0.8){
     		//Return the matched gesture
-        	return new Gesture(templates.get(t).getName(), score);
+    		if(resampleFirst){
+    			return new Gesture(resampledFirstTemplates.get(t).name, score);
+    		} else {
+    			return new Gesture(resampledLastTemplates.get(t).name, score);
+    		}
     	}
     	
     	return new Gesture("No match", 0.0f);
     }
+    
+    public void recognize(ArrayList<Point> points){
+		ArrayList<Point> ptsResampledFirst = processPoints(points, true);
+		ArrayList<Point> ptsResampledLast = processPoints(points, false);
+		
+		Gesture resampledFirst = recognize(ptsResampledFirst, true);
+		Gesture resampledLast = recognize(ptsResampledLast, false);
+		
+		resampledFirstLabel.setText("Resampled first "+resampledFirst);
+		resampledLastLabel.setText("Resampled last "+resampledLast);
+	}
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
+            	resampledFirstLabel = new JLabel();
+                resampledLastLabel = new JLabel();
 				templateLabel = new JLabel();
+				
             	
             	//Read in all the templates
-            	readTemplates("templates.txt", true, templates);
+            	readTemplates("ResampledFirstTemplates.txt", true, resampledFirstTemplates);
+            	readTemplates("ResampledLastTemplates.txt", false, resampledLastTemplates);
             	listUniqueGestures();
             	
                 GestureRecognizerMain shapes = new GestureRecognizerMain();
 
                 frame = new JFrame("$1 Gesture Recognizer");
                 frame.setResizable(false);
-                
-                
-                resultLabel = new JLabel();
                 
                 saveButton = new JButton("Turn into template");
                 saveButton.addActionListener(new ButtonListener());
@@ -200,11 +232,10 @@ public class GestureRecognizerMain extends JPanel {
                 controlPanel.add(saveButton);
                 
                 mainPanel.add(shapes, "wrap");
-                mainPanel.add(templateLabel, "wrap");
-                mainPanel.add(resultLabel, "wrap");
-                mainPanel.add(controlPanel);
-                
-                
+				mainPanel.add(templateLabel, "wrap");
+				mainPanel.add(resampledFirstLabel, "wrap");
+				mainPanel.add(resampledLastLabel, "wrap");
+				mainPanel.add(controlPanel);
                 
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.getContentPane().add(mainPanel);
@@ -230,18 +261,22 @@ public class GestureRecognizerMain extends JPanel {
 		final JComponent[] inputs = new JComponent[] { panel };
 
 		Object[] options = {"Cancel", "Add Template"};
-		int n = JOptionPane.showOptionDialog(frame, inputs, "Add Template", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, nameText);
+		nameText.requestFocus();
+		int n = JOptionPane.showOptionDialog(frame, inputs, "Add Template", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[1]);
 
 		//Process input
 		if(n == 1){
 			//Check input
 			if(!nameText.getText().equals("")){
 				//Create the templates in both files based on the raw input points
-				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, true), "templates.txt");
+				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, true), "resampledFirstTemplates.txt");
+				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, false), "resampledLastTemplates.txt");
 				
-				templates.clear();
+				resampledFirstTemplates.clear();
+				resampledLastTemplates.clear();
 				
-				readTemplates("templates.txt", true, templates);
+				readTemplates("resampledFirstTemplates.txt", true, resampledFirstTemplates);
+				readTemplates("resampledLastTemplates.txt", false, resampledLastTemplates);
 				
 				listUniqueGestures();
 				//Notify the user
@@ -311,7 +346,7 @@ public class GestureRecognizerMain extends JPanel {
     
     public static void listUniqueGestures(){
 		ArrayList<String> tmpData = new ArrayList<String>();
-		for(Template t : templates){
+		for(Template t : resampledFirstTemplates){
 			if(!tmpData.contains(t.name)){
 				tmpData.add(t.name);
 			}
@@ -321,7 +356,6 @@ public class GestureRecognizerMain extends JPanel {
 		for(String s : tmpData){
 			gestures += s + ", ";
 		}
-		
 		templateLabel.setText("Available gestures: "+gestures.substring(0, gestures.length()-2));
 	}
     
