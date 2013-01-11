@@ -12,7 +12,7 @@ public class GestureUtil {
 		newPoints.add(points.get(0));
 		
 		int i = 1;
-		while(i < points.size()-1){
+		while(i < points.size()){
 			Point p1 = points.get(i-1);
 			Point p2 = points.get(i);
 			

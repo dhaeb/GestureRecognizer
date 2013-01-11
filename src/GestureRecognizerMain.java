@@ -9,18 +9,24 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Path2D;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Scanner;
 
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 import net.miginfocom.swing.MigLayout;
@@ -35,6 +41,9 @@ public class GestureRecognizerMain extends JPanel {
     
     private static JButton saveButton;
     private static JLabel resultLabel;
+    private static JFrame frame;
+	private static JLabel templateLabel;
+
     
     //Angel range
     private double theta = 45.0;
@@ -114,6 +123,8 @@ public class GestureRecognizerMain extends JPanel {
             	
             	//Print out the match
             	//System.out.println(recognize(prvPoints));
+            	
+            	System.out.println("Prv points: "+prvPoints.size());
             	resultLabel.setText(recognize(prvPoints).toString());
             }
             
@@ -164,12 +175,15 @@ public class GestureRecognizerMain extends JPanel {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
+				templateLabel = new JLabel();
+            	
             	//Read in all the templates
-            	readTemplates();
+            	readTemplates("templates.txt", true, templates);
+            	listUniqueGestures();
             	
                 GestureRecognizerMain shapes = new GestureRecognizerMain();
 
-                JFrame frame = new JFrame("$1 Gesture Recognizer");
+                frame = new JFrame("$1 Gesture Recognizer");
                 frame.setResizable(false);
                 
                 
@@ -181,34 +195,14 @@ public class GestureRecognizerMain extends JPanel {
                 JPanel mainPanel = new JPanel(new MigLayout());
                 mainPanel.setPreferredSize(new Dimension(areaSize.width+20, areaSize.height+60));
 
-                ArrayList<String> tmpData = new ArrayList<String>();
-                for(Template t : templates){
-                	if(!tmpData.contains(t.name)){
-                		tmpData.add(t.name);
-                	}
-                }
-                String[] data = new String[tmpData.size()];
-                tmpData.toArray(data);
-                
                 JPanel controlPanel = new JPanel(new MigLayout());
-                JList templateList = new JList(data);
                 
-                String gestures = "";
-                for(String s : tmpData){
-                	gestures += s + ", ";
-                }
-                JLabel templateLabel = new JLabel("Available gestures: "+gestures.substring(0, gestures.length()-2));
-                
-                controlPanel.add(templateLabel, "cell 0 0");
-                controlPanel.add(templateList, "cell 0 1");
-                controlPanel.add(saveButton, "cell 1 0");
-                
+                controlPanel.add(saveButton);
                 
                 mainPanel.add(shapes, "wrap");
                 mainPanel.add(templateLabel, "wrap");
-                mainPanel.add(resultLabel);
-                
-                //mainPanel.add(controlPanel);
+                mainPanel.add(resultLabel, "wrap");
+                mainPanel.add(controlPanel);
                 
                 
                 
@@ -221,24 +215,76 @@ public class GestureRecognizerMain extends JPanel {
         });
     }
     
-    public static void readTemplates(){
-    	try {
-			Scanner sc = new Scanner(new File("templates.txt"));
-			
+    private static void addTemplate(ArrayList<Point> points, double squareSize, int N){
+		String templateName = "";
+
+		JPanel panel = new JPanel(new MigLayout("", "[][grow][left, fill]", ""));
+		panel.setPreferredSize(new Dimension(100, 35));
+
+		JTextField nameText = new JTextField("");
+		JLabel nameLabel = new JLabel("Gesture name");
+
+		panel.add(nameLabel);	
+		panel.add(nameText, "growx");
+
+		final JComponent[] inputs = new JComponent[] { panel };
+
+		Object[] options = {"Cancel", "Add Template"};
+		int n = JOptionPane.showOptionDialog(frame, inputs, "Add Template", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, nameText);
+
+		//Process input
+		if(n == 1){
+			//Check input
+			if(!nameText.getText().equals("")){
+				//Create the templates in both files based on the raw input points
+				addTemplateToFile(new Template(nameText.getText(), points, squareSize, N, true), "templates.txt");
+				
+				templates.clear();
+				
+				readTemplates("templates.txt", true, templates);
+				
+				listUniqueGestures();
+				//Notify the user
+				JOptionPane.showMessageDialog(frame, "Template "+templateName+" successfully added.", "Succes", JOptionPane.INFORMATION_MESSAGE);
+			} else{
+				JOptionPane.showMessageDialog(frame, "Error. Input was incorrect.", "Error", JOptionPane.WARNING_MESSAGE);
+			}
+		}
+	}
+    
+    private static void addTemplateToFile(Template template, String fileName) {
+    	System.out.println("Adding template with "+template.points.size()+" points.");
+		try {
+		    PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(fileName, true)));
+		    
+		    out.println();
+		    out.println("#"+template.name);
+		    
+		    for(Point p:template.points){
+		    	out.println(p.x+" "+p.y);
+		    }
+		    
+		    out.close();
+		} catch (IOException e) {
+			System.out.println("Could not write to file.");
+		}
+	}
+    
+    public static void readTemplates(String fileName, boolean resampledFirst, ArrayList<Template> templates){
+		try {
+			Scanner sc = new Scanner(new File(fileName));
+
 			String curTemplate = "";
 			ArrayList<Point> curPoints = null;
-			
+
 			while(sc.hasNext()){
 				String cur = sc.next();
-							
+
 				if(cur.charAt(0) == '#'){
 					if(!curTemplate.equals("") && curPoints != null){
-						//System.out.println("Current template: "+curTemplate);
-						//System.out.println("#points: "+curPoints.size());
-						
-						templates.add(new Template(curTemplate, curPoints));
+						templates.add(new Template(curTemplate, curPoints, resampledFirst));
 					}
-					
+
 					curTemplate = cur.substring(1);
 					curPoints = new ArrayList<Point>();
 				} else {
@@ -247,36 +293,48 @@ public class GestureRecognizerMain extends JPanel {
 					}
 				}
 			}
-			//Add the last template
-			templates.add(new Template(curTemplate, curPoints));
 			
-			//System.out.println("Last template: "+curTemplate);
-			//System.out.println("#points: "+curPoints.size());
-			//System.out.println("Last Point: "+curPoints.get(curPoints.size()-1).x + ", "+curPoints.get(curPoints.size()-1).y);
-			
-			
+			if(!curTemplate.equals("") && curPoints != null){
+				//Add the last template
+				templates.add(new Template(curTemplate, curPoints, resampledFirst));
+			}
 		} catch (FileNotFoundException e) {
 			System.out.println("Can't find file.");
 		}
-    	
-    	System.out.println(templates.size()+" templates loaded.");
-    }
+
+		if(resampledFirst){
+			System.out.println(templates.size()+" resampled first templates loaded.");
+		} else {
+			System.out.println(templates.size()+" resampled last templates loaded.");
+		}
+	}
+    
+    public static void listUniqueGestures(){
+		ArrayList<String> tmpData = new ArrayList<String>();
+		for(Template t : templates){
+			if(!tmpData.contains(t.name)){
+				tmpData.add(t.name);
+			}
+		}
+
+		String gestures = "  ";
+		for(String s : tmpData){
+			gestures += s + ", ";
+		}
+		
+		templateLabel.setText("Available gestures: "+gestures.substring(0, gestures.length()-2));
+	}
     
     protected static class ButtonListener implements ActionListener {
 		public void actionPerformed(ActionEvent e){
 			JButton b = (JButton) e.getSource();
-				
-			//Scan the selected row and add it to the order tlabe
+
 			if(b.equals(saveButton)){
-	            Template tmp = new Template("TEST", prvPoints, squareSize, N);
-	            
-	            for(int i=0; i<tmp.points.size(); i++){
-	            	//System.out.println(i+". Point: ("+prvPoints.get(i).x+", "+prvPoints.get(i).y+")");
-	            	System.out.println(tmp.points.get(i).x + " "+tmp.points.get(i).y);
-	            }
-	            
-	            prvPoints.clear();
+				if(!prvPoints.isEmpty()){
+					addTemplate(prvPoints, squareSize, N);
+				}
+				prvPoints.clear();
 			}
 		}
-    }
+	}
 }

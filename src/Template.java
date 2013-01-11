@@ -4,25 +4,35 @@ public class Template {
 	
 	public String name;
 	public ArrayList<Point> points = new ArrayList<Point>();
+	public boolean resampleFirst;
 	
 	//Constructor for already processed raw input
-	public Template(String name, ArrayList<Point> points){
+	public Template(String name, ArrayList<Point> points, boolean resampleFirst){
 		this.name = name;
 		this.points = points;
+		this.resampleFirst = resampleFirst;
 	}
 	
-	public Template(String name, ArrayList<Point> points, double squareSize, int N){
+	public Template(String name, ArrayList<Point> points, double squareSize, int N, boolean resampleFirst){
 		this.name = name;
 		this.points = points;
+		this.resampleFirst = resampleFirst;
 		
-		//1. Resample points to equidistance
-		this.points = GestureUtil.resample(this.points, N);
-    	//2. Rotate to 0°
+		if(resampleFirst){
+			//Resample points to equidistance
+			this.points = GestureUtil.resample(this.points, N);
+		}
+		
+    	//Rotate to 0ï¿½
 		this.points = GestureUtil.rotate(this.points);
-    	//3. Scale to square
+    	//Scale to square
 		this.points = GestureUtil.scale(this.points, squareSize);
-    	//4. Translate to origin
+    	//Translate to origin
 		this.points = GestureUtil.translate(this.points);
+		
+		if(!resampleFirst){
+			this.points = GestureUtil.resample(this.points, N);
+		}
 	}
 	
 	public String getName() {
