@@ -29,10 +29,15 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
 import net.miginfocom.swing.MigLayout;
 
 public class GestureRecognizerMain extends JPanel {
 
+	private static Logger log = Logger.getLogger(GestureRecognizerMain.class);
 	private static final long serialVersionUID = 1L;
 	private Point start;
     private Point stop;
@@ -64,6 +69,9 @@ public class GestureRecognizerMain extends JPanel {
     private static ArrayList<Template> resampledLastTemplates = new ArrayList<Template>();
 
     public GestureRecognizerMain() {
+    	log.setLevel(Level.DEBUG);
+    	BasicConfigurator.configure();
+    	
         setBackground(Color.white);
         setPreferredSize(areaSize);
         PathListener listener = new PathListener();
@@ -121,7 +129,7 @@ public class GestureRecognizerMain extends JPanel {
             	prvPoints = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
             	Collections.copy(prvPoints, points);
             	
-            	System.out.println("Prv points: "+prvPoints.size());
+            	log.debug("Prv points: "+prvPoints.size());
             	recognize(prvPoints);
             }
             
@@ -288,7 +296,7 @@ public class GestureRecognizerMain extends JPanel {
 	}
     
     private static void addTemplateToFile(Template template, String fileName) {
-    	System.out.println("Adding template with "+template.points.size()+" points.");
+    	log.debug("Adding template with "+template.points.size()+" points.");
 		try {
 		    PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(fileName, true)));
 		    
@@ -301,7 +309,7 @@ public class GestureRecognizerMain extends JPanel {
 		    
 		    out.close();
 		} catch (IOException e) {
-			System.out.println("Could not write to file.");
+			log.warn("Could not write to file.");
 		}
 	}
     
@@ -334,13 +342,13 @@ public class GestureRecognizerMain extends JPanel {
 				templates.add(new Template(curTemplate, curPoints, resampledFirst));
 			}
 		} catch (FileNotFoundException e) {
-			System.out.println("Can't find file.");
+			log.warn("Can't find file.");
 		}
 
 		if(resampledFirst){
-			System.out.println(templates.size()+" resampled first templates loaded.");
+			log.debug(templates.size()+" resampled first templates loaded.");
 		} else {
-			System.out.println(templates.size()+" resampled last templates loaded.");
+			log.debug(templates.size()+" resampled last templates loaded.");
 		}
 	}
     
