@@ -1,5 +1,6 @@
-import java.util.ArrayList;
+package de.kdi.pojo;
 
+import java.util.List;
 
 public class BoundingBox {
 
@@ -8,13 +9,13 @@ public class BoundingBox {
 	public double width;
 	public double height;
 	
-	public BoundingBox(ArrayList<Point> points){
+	public BoundingBox(List<Point> points){
 		min = new Point(Double.MAX_VALUE, Double.MAX_VALUE);
 		max = new Point(Double.MIN_VALUE, Double.MIN_VALUE);
 		compute(points);
 	}
 	
-	public void compute(ArrayList<Point> points){
+	public void compute(List<Point> points){
 		for (Point point : points) {
 			if(point.x < min.x) min.x = point.x;
 			if(point.y < min.y) min.y = point.y;
