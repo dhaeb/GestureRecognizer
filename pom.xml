@@ -30,7 +30,7 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>de.kdi.GestureRecognizerMain.java</mainClass>
+							<mainClass>de.kdi.GestureRecognizerMain</mainClass>
 						</manifest>
 					</archive>
 				</configuration>
