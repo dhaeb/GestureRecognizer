@@ -27,26 +27,17 @@ import org.apache.logging.log4j.Logger;
 import de.kdi.gui.listener.ButtonListener;
 import de.kdi.gui.listener.MouseDrawingListener;
 import de.kdi.pojo.Gesture;
-import de.kdi.pojo.GestureUtil;
 import de.kdi.pojo.Point;
-import de.kdi.pojo.GestureTemplate;
 import de.kdi.pojo.gui.DrawnPoints;
+import de.kdi.recognizer.GestureRecognizer;
 
 public class GestureRecognizerMain extends JPanel implements Observer {
 
-	//Fitting square size
-	public static double squareSize = 250.0;
-	//Amount of points the data should be resampled to
-	public static int N = 64;
 	//Holds the current gesture points
 	public static List<Point> points = new ArrayList<Point>();
 	public static List<Point> prvPoints;
 	
-	public Point start;
-	public Point stop;
-	public Shape shape;
-	
-	
+	private DrawnPoints pointData = new DrawnPoints();
 	
 	public static Logger log = LogManager.getLogger("test");
 	public static JButton saveButton;
@@ -59,17 +50,6 @@ public class GestureRecognizerMain extends JPanel implements Observer {
     static JFrame frame;
 	static JLabel templateLabel;
 
-    
-    //Angel range
-    private double theta = 45.0;
-    //Angel precision
-    private double dTheta = 2.0;
-    
-    //Holds the predefined templates
-    static ArrayList<GestureTemplate> resampledFirstTemplates = new ArrayList<GestureTemplate>();
-    static ArrayList<GestureTemplate> resampledLastTemplates = new ArrayList<GestureTemplate>();
-
-    
     public GestureRecognizerMain() {
         setBackground(Color.white);
         setPreferredSize(areaSize);
@@ -83,98 +63,14 @@ public class GestureRecognizerMain extends JPanel implements Observer {
     public void paintComponent(Graphics gc) {
         super.paintComponent(gc);
         Graphics2D g2 = (Graphics2D) gc; 
-        if (start != null && stop != null) {
+        if (pointData.startPoint != null && pointData.endPoint != null) {
             BasicStroke stroke = new BasicStroke(1);
-            Shape strokedShape = stroke.createStrokedShape(shape);
+            Shape strokedShape = stroke.createStrokedShape(pointData.pointShape);
             g2.draw(strokedShape);
             g2.fill(strokedShape);
         }
     }
     
-    /**
-     * @param points
-     */
-    public void recognize(List<Point> points){
-    	List<Point> ptsResampledFirst = processPoints(points, true);
-    	List<Point> ptsResampledLast = processPoints(points, false);
-    	
-    	Gesture resampledFirst = recognize(ptsResampledFirst, true);
-    	Gesture resampledLast = recognize(ptsResampledLast, false);
-    	
-    	resampledFirstLabel.setText("Resampled first "+resampledFirst);
-    	resampledLastLabel.setText("Resampled last "+resampledLast);
-    }
-    
-    /**
-     * @param points
-     * @param resampleFirst
-     * @return
-     */
-    public List<Point> processPoints(List<Point> points, boolean resampleFirst){
-		List<Point> newPoints = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
-		Collections.copy(newPoints, points);
-		
-		if(resampleFirst){
-			//Resample points to equidistance
-			newPoints = Point.resample(newPoints, N);
-		}
-		
-		//Rotate to 0 degree
-		newPoints = Point.rotate(newPoints);
-		
-		//Scale to square
-		newPoints = Point.scale(newPoints, squareSize);
-		
-		//Translate to origin
-		newPoints = Point.translate(newPoints);
-		
-		if(!resampleFirst){
-			//Resample last
-			newPoints = Point.resample(newPoints, N);
-		}
-		
-		return newPoints;
-	}
-    
-    /**
-     * @param points
-     * @param resampleFirst
-     * @return
-     */
-    public Gesture recognize(List<Point> points, boolean resampleFirst){    
-    	double best = Double.MAX_VALUE;
-    	int t = -1;
-    	    	
-    	//Find a match
-    	for(int i=0; i<resampledFirstTemplates.size(); i++){
-    		double d = 0.0;
-    		if(resampleFirst){
-    			d = GestureUtil.distanceAtBestAngle(points, resampledFirstTemplates.get(i), -theta, theta, dTheta);
-    		} else {
-    			d = GestureUtil.distanceAtBestAngle(points, resampledLastTemplates.get(i), -theta, theta, dTheta);
-    		}
-    		
-    		if(d < best){
-    			best = d;
-    			t = i;
-    		}
-    	}
-    	
-    	//Calculate score
-    	float score = (float)(1.0 - (best/(0.5*Math.sqrt(squareSize*squareSize + squareSize*squareSize))));
-    	
-    	
-    	if(t > -1 && score > 0.8){
-    		//Return the matched gesture
-    		if(resampleFirst){
-    			return new Gesture(resampledFirstTemplates.get(t).name, score);
-    		} else {
-    			return new Gesture(resampledLastTemplates.get(t).name, score);
-    		}
-    	}
-    	
-    	return new Gesture("No match", 0.0f);
-    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
@@ -185,8 +81,8 @@ public class GestureRecognizerMain extends JPanel implements Observer {
 				
             	
             	//Read in all the templates
-            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, resampledFirstTemplates);
-            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, resampledLastTemplates);
+            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, GestureRecognizer.resampledFirstTemplates);
+            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, GestureRecognizer.resampledLastTemplates);
             	GestureTemplateCreator.listUniqueGestures();
             	
                 GestureRecognizerMain shapes = new GestureRecognizerMain();
@@ -223,19 +119,22 @@ public class GestureRecognizerMain extends JPanel implements Observer {
 	public void update(Observable arg0, Object arg1) {
 		DrawnPoints pointData = (DrawnPoints) arg1;
 		points = pointData.points;
-		start = pointData.startPoint;
-		stop = pointData.startPoint;
-		shape = pointData.pointShape;
+		this.pointData = pointData; 
+		copyToPreviousPoints();
+		recognizerGesture();
 		repaint();
-		if(pointData.finishedFigure){
-			copyToPreviousPoints();
-			recognize(GestureRecognizerMain.prvPoints);
-		}
 	}
 
 	private void copyToPreviousPoints() {
 		GestureRecognizerMain.prvPoints = new ArrayList<Point>(Arrays.asList(new Point[GestureRecognizerMain.points.size()]));
 		Collections.copy(GestureRecognizerMain.prvPoints, GestureRecognizerMain.points);
 		GestureRecognizerMain.log.debug("Prv points: " + GestureRecognizerMain.prvPoints.size());
+	}
+	
+	private void recognizerGesture() {
+		GestureRecognizer recognizer = new GestureRecognizer(prvPoints);
+		Gesture[] result = recognizer.recognize();
+		resampledFirstLabel.setText("Resampled first " + result[0]);
+		resampledLastLabel.setText("Resampled last " + result[1]);
 	}
 }

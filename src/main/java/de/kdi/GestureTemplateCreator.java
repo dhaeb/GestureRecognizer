@@ -20,6 +20,7 @@ import javax.swing.JTextField;
 import net.miginfocom.swing.MigLayout;
 import de.kdi.pojo.GestureTemplate;
 import de.kdi.pojo.Point;
+import de.kdi.recognizer.GestureRecognizer;
 
 public class GestureTemplateCreator {
 
@@ -49,11 +50,11 @@ public class GestureTemplateCreator {
 				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, true), "ResampledFirstTemplates.txt");
 				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, false), "ResampledLastTemplates.txt");
 				
-				GestureRecognizerMain.resampledFirstTemplates.clear();
-				GestureRecognizerMain.resampledLastTemplates.clear();
+				GestureRecognizer.resampledFirstTemplates.clear();
+				GestureRecognizer.resampledLastTemplates.clear();
 				
-				GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, GestureRecognizerMain.resampledFirstTemplates);
-				GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, GestureRecognizerMain.resampledLastTemplates);
+				GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, GestureRecognizer.resampledFirstTemplates);
+				GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, GestureRecognizer.resampledLastTemplates);
 				
 				GestureTemplateCreator.listUniqueGestures();
 				//Notify the user
@@ -84,7 +85,7 @@ public class GestureTemplateCreator {
 
 	static void listUniqueGestures(){
 		ArrayList<String> tmpData = new ArrayList<String>();
-		for(GestureTemplate t : GestureRecognizerMain.resampledFirstTemplates){
+		for(GestureTemplate t : GestureRecognizer.resampledFirstTemplates){
 			if(!tmpData.contains(t.name)){
 				tmpData.add(t.name);
 			}

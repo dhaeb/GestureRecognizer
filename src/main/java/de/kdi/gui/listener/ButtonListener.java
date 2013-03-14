@@ -7,6 +7,7 @@ import javax.swing.JButton;
 
 import de.kdi.GestureRecognizerMain;
 import de.kdi.GestureTemplateCreator;
+import de.kdi.recognizer.GestureRecognizer;
 
 public class ButtonListener implements ActionListener {
 	
@@ -14,7 +15,7 @@ public class ButtonListener implements ActionListener {
 		JButton b = (JButton) e.getSource();
 		if(b.equals(GestureRecognizerMain.saveButton)){
 			if(!GestureRecognizerMain.prvPoints.isEmpty()){
-				GestureTemplateCreator.addTemplate(GestureRecognizerMain.prvPoints, GestureRecognizerMain.squareSize, GestureRecognizerMain.N);
+				GestureTemplateCreator.addTemplate(GestureRecognizerMain.prvPoints, GestureRecognizer.squareSize, GestureRecognizer.N);
 			}
 			GestureRecognizerMain.prvPoints.clear();
 		}

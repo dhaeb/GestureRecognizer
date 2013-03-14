@@ -33,7 +33,6 @@ public class MouseDrawingListener extends Observable implements MouseListener, M
 		} catch (Exception e) {
 			// ignore...
 		}
-		pointsMetaData.finishedFigure = true;
 		setChanged();
 		notifyObservers(pointsMetaData);
 	}
@@ -49,7 +48,6 @@ public class MouseDrawingListener extends Observable implements MouseListener, M
 
 	@Override
 	public void mouseDragged(MouseEvent event) {
-		
 		Point endPoint = new Point(event.getPoint().x, event.getPoint().y);
 		pointsMetaData.endPoint = endPoint;
 		pointsMetaData.points.add(endPoint);

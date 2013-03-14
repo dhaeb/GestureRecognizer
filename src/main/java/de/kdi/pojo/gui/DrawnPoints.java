@@ -10,6 +10,4 @@ public class DrawnPoints {
 	public Point startPoint;
 	public Point endPoint;
 	public Path2D pointShape;
-	public boolean finishedFigure = false;
-	
 }
