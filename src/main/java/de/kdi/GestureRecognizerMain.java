@@ -6,25 +6,17 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Shape;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Scanner;
+import java.util.Observable;
+import java.util.Observer;
 
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 import net.miginfocom.swing.MigLayout;
@@ -33,21 +25,22 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import de.kdi.gui.listener.ButtonListener;
-import de.kdi.gui.listener.PathListener;
+import de.kdi.gui.listener.MouseDrawingListener;
 import de.kdi.pojo.Gesture;
 import de.kdi.pojo.GestureUtil;
 import de.kdi.pojo.Point;
 import de.kdi.pojo.GestureTemplate;
+import de.kdi.pojo.gui.DrawnPoints;
 
-public class GestureRecognizerMain extends JPanel {
+public class GestureRecognizerMain extends JPanel implements Observer {
 
 	//Fitting square size
 	public static double squareSize = 250.0;
 	//Amount of points the data should be resampled to
 	public static int N = 64;
 	//Holds the current gesture points
-	public static ArrayList<Point> points = new ArrayList<Point>();
-	public static ArrayList<Point> prvPoints;
+	public static List<Point> points = new ArrayList<Point>();
+	public static List<Point> prvPoints;
 	
 	public Point start;
 	public Point stop;
@@ -63,8 +56,8 @@ public class GestureRecognizerMain extends JPanel {
     
     private static JLabel resampledFirstLabel;
 	private static JLabel resampledLastLabel;
-    private static JFrame frame;
-	private static JLabel templateLabel;
+    static JFrame frame;
+	static JLabel templateLabel;
 
     
     //Angel range
@@ -73,18 +66,20 @@ public class GestureRecognizerMain extends JPanel {
     private double dTheta = 2.0;
     
     //Holds the predefined templates
-    private static ArrayList<GestureTemplate> resampledFirstTemplates = new ArrayList<GestureTemplate>();
-    private static ArrayList<GestureTemplate> resampledLastTemplates = new ArrayList<GestureTemplate>();
+    static ArrayList<GestureTemplate> resampledFirstTemplates = new ArrayList<GestureTemplate>();
+    static ArrayList<GestureTemplate> resampledLastTemplates = new ArrayList<GestureTemplate>();
 
     
     public GestureRecognizerMain() {
         setBackground(Color.white);
         setPreferredSize(areaSize);
-        PathListener listener = new PathListener(this);
+        MouseDrawingListener listener = new MouseDrawingListener();
+        listener.addObserver(this);
         addMouseListener(listener);
         addMouseMotionListener(listener);
     }
 
+    @Override
     public void paintComponent(Graphics gc) {
         super.paintComponent(gc);
         Graphics2D g2 = (Graphics2D) gc; 
@@ -95,7 +90,20 @@ public class GestureRecognizerMain extends JPanel {
             g2.fill(strokedShape);
         }
     }
-
+    
+    /**
+     * @param points
+     */
+    public void recognize(List<Point> points){
+    	List<Point> ptsResampledFirst = processPoints(points, true);
+    	List<Point> ptsResampledLast = processPoints(points, false);
+    	
+    	Gesture resampledFirst = recognize(ptsResampledFirst, true);
+    	Gesture resampledLast = recognize(ptsResampledLast, false);
+    	
+    	resampledFirstLabel.setText("Resampled first "+resampledFirst);
+    	resampledLastLabel.setText("Resampled last "+resampledLast);
+    }
     
     /**
      * @param points
@@ -167,21 +175,6 @@ public class GestureRecognizerMain extends JPanel {
     	
     	return new Gesture("No match", 0.0f);
     }
-    
-    /**
-     * @param points
-     */
-    public void recognize(List<Point> points){
-		List<Point> ptsResampledFirst = processPoints(points, true);
-		List<Point> ptsResampledLast = processPoints(points, false);
-		
-		Gesture resampledFirst = recognize(ptsResampledFirst, true);
-		Gesture resampledLast = recognize(ptsResampledLast, false);
-		
-		resampledFirstLabel.setText("Resampled first "+resampledFirst);
-		resampledLastLabel.setText("Resampled last "+resampledLast);
-	}
-
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
@@ -192,9 +185,9 @@ public class GestureRecognizerMain extends JPanel {
 				
             	
             	//Read in all the templates
-            	readTemplates("ResampledFirstTemplates.txt", true, resampledFirstTemplates);
-            	readTemplates("ResampledLastTemplates.txt", false, resampledLastTemplates);
-            	listUniqueGestures();
+            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, resampledFirstTemplates);
+            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, resampledLastTemplates);
+            	GestureTemplateCreator.listUniqueGestures();
             	
                 GestureRecognizerMain shapes = new GestureRecognizerMain();
 
@@ -225,119 +218,24 @@ public class GestureRecognizerMain extends JPanel {
             }
         });
     }
-    
-    public static void addTemplate(ArrayList<Point> points, double squareSize, int N){
-		String templateName = "";
 
-		JPanel panel = new JPanel(new MigLayout("", "[][grow][left, fill]", ""));
-		panel.setPreferredSize(new Dimension(100, 35));
-
-		JTextField nameText = new JTextField("");
-		JLabel nameLabel = new JLabel("Gesture name");
-
-		panel.add(nameLabel);	
-		panel.add(nameText, "growx");
-
-		final JComponent[] inputs = new JComponent[] { panel };
-
-		Object[] options = {"Cancel", "Add Template"};
-		nameText.requestFocus();
-		int n = JOptionPane.showOptionDialog(frame, inputs, "Add Template", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[1]);
-
-		//Process input
-		if(n == 1){
-			//Check input
-			if(!nameText.getText().equals("")){
-				//Create the templates in both files based on the raw input points
-				addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, true), "ResampledFirstTemplates.txt");
-				addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, false), "ResampledLastTemplates.txt");
-				
-				resampledFirstTemplates.clear();
-				resampledLastTemplates.clear();
-				
-				readTemplates("ResampledFirstTemplates.txt", true, resampledFirstTemplates);
-				readTemplates("ResampledLastTemplates.txt", false, resampledLastTemplates);
-				
-				listUniqueGestures();
-				//Notify the user
-				JOptionPane.showMessageDialog(frame, "Template "+templateName+" successfully added.", "Succes", JOptionPane.INFORMATION_MESSAGE);
-			} else{
-				JOptionPane.showMessageDialog(frame, "Error. Input was incorrect.", "Error", JOptionPane.WARNING_MESSAGE);
-			}
+	@Override
+	public void update(Observable arg0, Object arg1) {
+		DrawnPoints pointData = (DrawnPoints) arg1;
+		points = pointData.points;
+		start = pointData.startPoint;
+		stop = pointData.startPoint;
+		shape = pointData.pointShape;
+		repaint();
+		if(pointData.finishedFigure){
+			copyToPreviousPoints();
+			recognize(GestureRecognizerMain.prvPoints);
 		}
 	}
-    
-    private static void addTemplateToFile(GestureTemplate template, String fileName) {
-    	log.debug("Adding template with "+template.points.size()+" points.");
-		try {
-		    PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(fileName, true)));
-		    
-		    out.println();
-		    out.println("#"+template.name);
-		    
-		    for(Point p:template.points){
-		    	out.println(p.x+" "+p.y);
-		    }
-		    
-		    out.close();
-		} catch (IOException e) {
-			log.warn("Could not write to file.");
-		}
-	}
-    
-    public static void readTemplates(String fileName, boolean resampledFirst, ArrayList<GestureTemplate> templates){
-		try {
-			Scanner sc = new Scanner(new File(fileName));
 
-			String curTemplate = "";
-			ArrayList<Point> curPoints = null;
-
-			while(sc.hasNext()){
-				String cur = sc.next();
-
-				if(cur.charAt(0) == '#'){
-					if(!curTemplate.equals("") && curPoints != null){
-						templates.add(new GestureTemplate(curTemplate, curPoints, resampledFirst));
-					}
-
-					curTemplate = cur.substring(1);
-					curPoints = new ArrayList<Point>();
-				} else {
-					if(curPoints != null){
-						curPoints.add(new Point(Double.parseDouble(cur), Double.parseDouble(sc.next())));
-					}
-				}
-			}
-			
-			sc.close();
-			
-			if(!curTemplate.equals("") && curPoints != null){
-				//Add the last template
-				templates.add(new GestureTemplate(curTemplate, curPoints, resampledFirst));
-			}
-		} catch (FileNotFoundException e) {
-			log.warn("Can't find file.");
-		}
-
-		if(resampledFirst){
-			log.debug(templates.size()+" resampled first templates loaded.");
-		} else {
-			log.debug(templates.size()+" resampled last templates loaded.");
-		}
-	}
-    
-    public static void listUniqueGestures(){
-		ArrayList<String> tmpData = new ArrayList<String>();
-		for(GestureTemplate t : resampledFirstTemplates){
-			if(!tmpData.contains(t.name)){
-				tmpData.add(t.name);
-			}
-		}
-
-		String gestures = "  ";
-		for(String s : tmpData){
-			gestures += s + ", ";
-		}
-		templateLabel.setText("Available gestures: "+gestures.substring(0, gestures.length()-2));
+	private void copyToPreviousPoints() {
+		GestureRecognizerMain.prvPoints = new ArrayList<Point>(Arrays.asList(new Point[GestureRecognizerMain.points.size()]));
+		Collections.copy(GestureRecognizerMain.prvPoints, GestureRecognizerMain.points);
+		GestureRecognizerMain.log.debug("Prv points: " + GestureRecognizerMain.prvPoints.size());
 	}
 }
