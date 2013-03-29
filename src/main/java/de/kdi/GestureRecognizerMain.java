@@ -28,31 +28,41 @@ import de.kdi.gui.listener.ButtonListener;
 import de.kdi.gui.listener.MouseDrawingListener;
 import de.kdi.pojo.Gesture;
 import de.kdi.pojo.Point;
+import de.kdi.pojo.TemplateCollection;
 import de.kdi.pojo.gui.DrawnPoints;
 import de.kdi.recognizer.GestureRecognizer;
 
 public class GestureRecognizerMain extends JPanel implements Observer {
 
+	private static final long serialVersionUID = 1L;
+	
 	//Holds the current gesture points
-	public static List<Point> points = new ArrayList<Point>();
-	public static List<Point> prvPoints;
+	public static List<Point> POINTS = new ArrayList<Point>();
+	public static List<Point> PRV_POINTS;
+	
+	public static Logger LOG = LogManager.getLogger("test");
+	public static JButton SAVE_BUTTON;
+
+    private static Dimension AREA_SIZE = new Dimension(600, 600);
+    
+    private static JLabel RESAMPLED_FIRST_LABEL;
+	private static JLabel RESAMPLED_LAST_LABEL;
+    
+	public static TemplateCollection TEMPLATES = new TemplateCollection();
+	
+	public static JFrame FRAME;
 	
 	private DrawnPoints pointData = new DrawnPoints();
 	
-	public static Logger log = LogManager.getLogger("test");
-	public static JButton saveButton;
-
-	private static final long serialVersionUID = 1L;
-    private static Dimension areaSize = new Dimension(600, 600);
-    
-    private static JLabel resampledFirstLabel;
-	private static JLabel resampledLastLabel;
-    static JFrame frame;
-	static JLabel templateLabel;
-
+	private JLabel templateLabel = new JLabel();
+	
+	public JLabel getTemplateLabel(){
+		return templateLabel;
+	}
+	
     public GestureRecognizerMain() {
         setBackground(Color.white);
-        setPreferredSize(areaSize);
+        setPreferredSize(AREA_SIZE);
         MouseDrawingListener listener = new MouseDrawingListener();
         listener.addObserver(this);
         addMouseListener(listener);
@@ -75,42 +85,40 @@ public class GestureRecognizerMain extends JPanel implements Observer {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-            	resampledFirstLabel = new JLabel();
-                resampledLastLabel = new JLabel();
-				templateLabel = new JLabel();
-				
-            	
+            	RESAMPLED_FIRST_LABEL = new JLabel();
+                RESAMPLED_LAST_LABEL = new JLabel();
+				//GestureRecognizerMain.templateLabel.setText("Available gestures: "
             	//Read in all the templates
-            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, GestureRecognizer.resampledFirstTemplates);
-            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, GestureRecognizer.resampledLastTemplates);
-            	GestureTemplateCreator.listUniqueGestures();
+            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, TEMPLATES.resampledFirstTemplates);
+            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, TEMPLATES.resampledLastTemplates);
+            	GestureTemplateCreator.getUniqueGesturesNames(TEMPLATES.resampledFirstTemplates);
             	
-                GestureRecognizerMain shapes = new GestureRecognizerMain();
+                GestureRecognizerMain mainView = new GestureRecognizerMain();
 
-                frame = new JFrame("$1 Gesture Recognizer");
-                frame.setResizable(false);
+                FRAME = new JFrame("$1 Gesture Recognizer");
+                FRAME.setResizable(false);
                 
-                saveButton = new JButton("Turn into template");
-                saveButton.addActionListener(new ButtonListener());
+                SAVE_BUTTON = new JButton("Turn into template");
+                SAVE_BUTTON.addActionListener(new ButtonListener(mainView));
                 
                 JPanel mainPanel = new JPanel(new MigLayout());
-                mainPanel.setPreferredSize(new Dimension(areaSize.width+20, areaSize.height+60));
+                mainPanel.setPreferredSize(new Dimension(AREA_SIZE.width+20, AREA_SIZE.height+60));
 
                 JPanel controlPanel = new JPanel(new MigLayout());
                 
-                controlPanel.add(saveButton);
+                controlPanel.add(SAVE_BUTTON);
                 
-                mainPanel.add(shapes, "wrap");
-				mainPanel.add(templateLabel, "wrap");
-				mainPanel.add(resampledFirstLabel, "wrap");
-				mainPanel.add(resampledLastLabel, "wrap");
+                mainPanel.add(mainView, "wrap");
+				mainPanel.add(mainView.getTemplateLabel(), "wrap");
+				mainPanel.add(RESAMPLED_FIRST_LABEL, "wrap");
+				mainPanel.add(RESAMPLED_LAST_LABEL, "wrap");
 				mainPanel.add(controlPanel);
                 
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.getContentPane().add(mainPanel);
+                FRAME.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                FRAME.getContentPane().add(mainPanel);
 
-                frame.pack();
-                frame.setVisible(true);
+                FRAME.pack();
+                FRAME.setVisible(true);
             }
         });
     }
@@ -118,23 +126,23 @@ public class GestureRecognizerMain extends JPanel implements Observer {
 	@Override
 	public void update(Observable arg0, Object arg1) {
 		DrawnPoints pointData = (DrawnPoints) arg1;
-		points = pointData.points;
+		POINTS = pointData.points;
 		this.pointData = pointData; 
 		copyToPreviousPoints();
-		recognizerGesture();
+		recognizeGesture();
 		repaint();
 	}
 
 	private void copyToPreviousPoints() {
-		GestureRecognizerMain.prvPoints = new ArrayList<Point>(Arrays.asList(new Point[GestureRecognizerMain.points.size()]));
-		Collections.copy(GestureRecognizerMain.prvPoints, GestureRecognizerMain.points);
-		GestureRecognizerMain.log.debug("Prv points: " + GestureRecognizerMain.prvPoints.size());
+		GestureRecognizerMain.PRV_POINTS = new ArrayList<Point>(Arrays.asList(new Point[GestureRecognizerMain.POINTS.size()]));
+		Collections.copy(GestureRecognizerMain.PRV_POINTS, GestureRecognizerMain.POINTS);
+		GestureRecognizerMain.LOG.debug("Prv points: " + GestureRecognizerMain.PRV_POINTS.size());
 	}
 	
-	private void recognizerGesture() {
-		GestureRecognizer recognizer = new GestureRecognizer(prvPoints);
-		Gesture[] result = recognizer.recognize();
-		resampledFirstLabel.setText("Resampled first " + result[0]);
-		resampledLastLabel.setText("Resampled last " + result[1]);
+	private void recognizeGesture() {
+		GestureRecognizer recognizer = new GestureRecognizer(PRV_POINTS);
+		Gesture[] result = recognizer.recognize(TEMPLATES);
+		RESAMPLED_FIRST_LABEL.setText("Resampled first " + result[0]);
+		RESAMPLED_LAST_LABEL.setText("Resampled last " + result[1]);
 	}
 }

@@ -9,95 +9,95 @@ import de.kdi.pojo.Gesture;
 import de.kdi.pojo.GestureTemplate;
 import de.kdi.pojo.GestureUtil;
 import de.kdi.pojo.Point;
+import de.kdi.pojo.TemplateCollection;
 
 public class GestureRecognizer {
 
+	private static final double GESTURE_MATCHING_LIMIT = 0.8;
 	//Amount of points the data should be resampled to
 	public static int N = 64;
 	//Fitting square size
-	public static double squareSize = 250.0;
+	public static double SQUARE_SIZE = 250.0;
     //Angel range
-    private static double theta = 45.0;
+    private static double THETA = 45.0;
     //Angel precision
-    private static double dTheta = 2.0;
-	//Holds the predefined templates
-	public static ArrayList<GestureTemplate> resampledFirstTemplates = new ArrayList<GestureTemplate>();
-	public static ArrayList<GestureTemplate> resampledLastTemplates = new ArrayList<GestureTemplate>();
+    private static double D_THETA = 2.0;
+    
 	private List<Point> points;
     
 	public GestureRecognizer(List<Point> points) {
 		this.points = points;
 	}
 	
-    public Gesture[] recognize(){
-    	List<Point> ptsResampledFirst = processPoints(points, true);
-    	List<Point> ptsResampledLast = processPoints(points, false);
-    	
-    	Gesture resampledFirst = recognize(ptsResampledFirst, true);
-    	Gesture resampledLast = recognize(ptsResampledLast, false);
-    	
+    public Gesture[] recognize(TemplateCollection templates){
+    	List<Point> ptsResampledFirst = $1transformationsFirstResample();
+    	List<Point> ptsResampledLast = $1transformationsLastResample();
+    	Gesture resampledFirst = recognize(ptsResampledFirst, templates.resampledFirstTemplates);
+    	Gesture resampledLast = recognize(ptsResampledLast, templates.resampledLastTemplates);
     	return new Gesture[]{resampledFirst, resampledLast};
     }
     
-    private List<Point> processPoints(List<Point> points, boolean resampleFirst){
-		List<Point> newPoints = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
-		Collections.copy(newPoints, points);
-		
-		if(resampleFirst){
-			//Resample points to equidistance
-			newPoints = Point.resample(newPoints, N);
-		}
-		
-		//Rotate to 0 degree
-		newPoints = Point.rotate(newPoints);
-		
-		//Scale to square
-		newPoints = Point.scale(newPoints, squareSize);
-		
-		//Translate to origin
-		newPoints = Point.translate(newPoints);
-		
-		if(!resampleFirst){
-			//Resample last
-			newPoints = Point.resample(newPoints, N);
-		}
-		
-		return newPoints;
+    private List<Point> $1transformationsFirstResample() {
+    	List<Point> ptsResampledFirst = cloneArray(points);
+    	ptsResampledFirst = Point.resample(ptsResampledFirst, N);
+    	ptsResampledFirst = processPoints(ptsResampledFirst);
+    	return ptsResampledFirst;
+    }
+
+	private List<Point> $1transformationsLastResample() {
+		List<Point> ptsResampledLast = cloneArray(points);
+    	ptsResampledLast = processPoints(ptsResampledLast); 
+    	ptsResampledLast = Point.resample(ptsResampledLast, N);
+		return ptsResampledLast;
 	}
     
-    private Gesture recognize(List<Point> points, boolean resampleFirst){    
-    	double best = Double.MAX_VALUE;
-    	int t = -1;
+    private List<Point> cloneArray(List<Point> points){
+		List<Point> processedPoints = new ArrayList<Point>(Arrays.asList(new Point[points.size()]));
+		Collections.copy(processedPoints, points);
+		return processedPoints;
+	}
+
+	private List<Point> processPoints(List<Point> points) {
+		//Rotate to 0 degree
+		points = Point.rotate(points);
+		//Scale to square
+		points = Point.scale(points, SQUARE_SIZE);
+		//Translate to origin
+		points = Point.translate(points);
+		return points;
+	}
+    
+    private Gesture recognize(List<Point> points, List<GestureTemplate> templateList){
+    	Gesture resultingGesture = new Gesture("No match", 0.0f);
+    	double bestMatch = Double.MAX_VALUE;
+    	int indexOfBestMatch = -1;
     	    	
     	//Find a match
-    	for(int i=0; i< resampledFirstTemplates.size(); i++){
-    		double d = 0.0;
-    		if(resampleFirst){
-    			d = GestureUtil.distanceAtBestAngle(points, resampledFirstTemplates.get(i), -theta, theta, dTheta);
-    		} else {
-    			d = GestureUtil.distanceAtBestAngle(points, resampledLastTemplates.get(i), -theta, theta, dTheta);
-    		}
+    	for(int i=0; i < templateList.size(); i++){
+    		double currentMatchedValue = 0.0;
+    		currentMatchedValue = GestureUtil.distanceAtBestAngle(points, templateList.get(i), -THETA, THETA, D_THETA);
     		
-    		if(d < best){
-    			best = d;
-    			t = i;
+    		if(currentMatchedValue < bestMatch){
+    			bestMatch = currentMatchedValue;
+    			indexOfBestMatch = i;
     		}
     	}
     	
-    	//Calculate score
-    	float score = (float)(1.0 - (best/(0.5*Math.sqrt(squareSize*squareSize + squareSize*squareSize))));
+    	float score = calculateMatchingScore(bestMatch);
     	
-    	
-    	if(t > -1 && score > 0.8){
-    		//Return the matched gesture
-    		if(resampleFirst){
-    			return new Gesture(resampledFirstTemplates.get(t).name, score);
-    		} else {
-    			return new Gesture(resampledLastTemplates.get(t).name, score);
-    		}
+    	if(indexOfBestMatch > -1 && score > GESTURE_MATCHING_LIMIT){
+    		//GESTURE MATCHED!
+    		resultingGesture = new Gesture(templateList.get(indexOfBestMatch).name, score);
     	}
     	
-    	return new Gesture("No match", 0.0f);
+    	return resultingGesture;
     }
+
+	private float calculateMatchingScore(double bestMatch) {
+		double twoTimesSquareSizeMultSqareSize = SQUARE_SIZE * SQUARE_SIZE + SQUARE_SIZE * SQUARE_SIZE;
+		double lengthOfSquareSizeLine = 0.5 * Math.sqrt( twoTimesSquareSizeMultSqareSize );
+		float diffenceValue = (float) (bestMatch/lengthOfSquareSizeLine);
+		return 1.0f - diffenceValue;
+	}
 	
 }

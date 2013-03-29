@@ -20,11 +20,11 @@ import javax.swing.JTextField;
 import net.miginfocom.swing.MigLayout;
 import de.kdi.pojo.GestureTemplate;
 import de.kdi.pojo.Point;
-import de.kdi.recognizer.GestureRecognizer;
+import de.kdi.pojo.TemplateCollection;
 
 public class GestureTemplateCreator {
 
-	public static void addTemplate(List<Point> points, double squareSize, int N){
+	public static String addTemplate(List<Point> points, double squareSize, int N){
 		String templateName = "";
 	
 		JPanel panel = new JPanel(new MigLayout("", "[][grow][left, fill]", ""));
@@ -40,7 +40,7 @@ public class GestureTemplateCreator {
 	
 		Object[] options = {"Cancel", "Add Template"};
 		nameText.requestFocus();
-		int n = JOptionPane.showOptionDialog(GestureRecognizerMain.frame, inputs, "Add Template", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[1]);
+		int n = JOptionPane.showOptionDialog(GestureRecognizerMain.FRAME, inputs, "Add Template", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[1]);
 	
 		//Process input
 		if(n == 1){
@@ -50,23 +50,27 @@ public class GestureTemplateCreator {
 				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, true), "ResampledFirstTemplates.txt");
 				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, false), "ResampledLastTemplates.txt");
 				
-				GestureRecognizer.resampledFirstTemplates.clear();
-				GestureRecognizer.resampledLastTemplates.clear();
+				TemplateCollection templates = new TemplateCollection();
+				GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, templates.resampledFirstTemplates);
+				GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, templates.resampledLastTemplates);
 				
-				GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, GestureRecognizer.resampledFirstTemplates);
-				GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, GestureRecognizer.resampledLastTemplates);
+				String gestureNames = GestureTemplateCreator.getUniqueGesturesNames(templates.resampledFirstTemplates);
+				GestureRecognizerMain.TEMPLATES = templates;
 				
-				GestureTemplateCreator.listUniqueGestures();
 				//Notify the user
-				JOptionPane.showMessageDialog(GestureRecognizerMain.frame, "Template "+templateName+" successfully added.", "Succes", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(GestureRecognizerMain.FRAME, "Template "+templateName+" successfully added.", "Succes", JOptionPane.INFORMATION_MESSAGE);
+				return gestureNames;
 			} else{
-				JOptionPane.showMessageDialog(GestureRecognizerMain.frame, "Error. Input was incorrect.", "Error", JOptionPane.WARNING_MESSAGE);
+				JOptionPane.showMessageDialog(GestureRecognizerMain.FRAME, "Error. Input was incorrect.", "Error", JOptionPane.WARNING_MESSAGE);
+				throw new IllegalArgumentException("no such gesture");
 			}
 		}
+		return "";
+		
 	}
 
 	public static void addTemplateToFile(GestureTemplate template, String fileName) {
-		GestureRecognizerMain.log.debug("Adding template with "+template.points.size()+" points.");
+		GestureRecognizerMain.LOG.debug("Adding template with "+template.points.size()+" points.");
 		try {
 		    PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(fileName, true)));
 		    
@@ -79,13 +83,13 @@ public class GestureTemplateCreator {
 		    
 		    out.close();
 		} catch (IOException e) {
-			GestureRecognizerMain.log.warn("Could not write to file.");
+			GestureRecognizerMain.LOG.warn("Could not write to file.");
 		}
 	}
 
-	static void listUniqueGestures(){
+	static String getUniqueGesturesNames(List<GestureTemplate> templateList){
 		ArrayList<String> tmpData = new ArrayList<String>();
-		for(GestureTemplate t : GestureRecognizer.resampledFirstTemplates){
+		for(GestureTemplate t : templateList){
 			if(!tmpData.contains(t.name)){
 				tmpData.add(t.name);
 			}
@@ -95,10 +99,10 @@ public class GestureTemplateCreator {
 		for(String s : tmpData){
 			gestures += s + ", ";
 		}
-		GestureRecognizerMain.templateLabel.setText("Available gestures: "+gestures.substring(0, gestures.length()-2));
+		return gestures.substring(0, gestures.length()-2);
 	}
 
-	static void readTemplates(String fileName, boolean resampledFirst, ArrayList<GestureTemplate> templates){
+	static void readTemplates(String fileName, boolean resampledFirst, List<GestureTemplate> templates){
 		try {
 			Scanner sc = new Scanner(new File(fileName));
 	
@@ -129,13 +133,13 @@ public class GestureTemplateCreator {
 				templates.add(new GestureTemplate(curTemplate, curPoints, resampledFirst));
 			}
 		} catch (FileNotFoundException e) {
-			GestureRecognizerMain.log.warn("Can't find file.");
+			GestureRecognizerMain.LOG.warn("Can't find file.");
 		}
 	
 		if(resampledFirst){
-			GestureRecognizerMain.log.debug(templates.size()+" resampled first templates loaded.");
+			GestureRecognizerMain.LOG.debug(templates.size()+" resampled first templates loaded.");
 		} else {
-			GestureRecognizerMain.log.debug(templates.size()+" resampled last templates loaded.");
+			GestureRecognizerMain.LOG.debug(templates.size()+" resampled last templates loaded.");
 		}
 	}
 
