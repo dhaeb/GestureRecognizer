@@ -1,6 +1,6 @@
 package de.kdi.pojo;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +27,18 @@ public class TestPoint {
 		fixtureList.add(fixture2);
 		fixtureList.add(fixture3);
 		assertEquals(2.0d ,Point.pathLength(fixtureList),0.1); 
+	}
+	
+	@Test
+	public void testEquals(){
+		Point firstPoint = new Point(1.1d, 1.4d);
+		Point secondPoint = new Point(1.1d, 1.4d);
+		Point thriedPoint = new Point(1.1d, 0d);
+		assertEquals(firstPoint, secondPoint);
+		assertNotEquals(firstPoint,thriedPoint);
+		assertNotEquals(secondPoint, thriedPoint);
+		assertNotEquals(secondPoint, Integer.valueOf(2));
+		assertNotEquals(secondPoint, "string");
 	}
 	
 }

@@ -23,6 +23,18 @@ public class Point {
 		double dy = comparePoint.y - y;
 		return Math.sqrt(dx*dx + dy*dy);
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		boolean isEqual = false;
+		if(obj instanceof Point){
+			Point compareable = (Point) obj;
+			boolean hasSameXValue = x == compareable.x;
+			boolean hasSameYValue = y == compareable.y;
+			isEqual = hasSameXValue && hasSameYValue;
+		}
+		return isEqual;
+	}
 
 	public static List<Point> translate(List<Point> points) {
 		Point c = centroid(points);
