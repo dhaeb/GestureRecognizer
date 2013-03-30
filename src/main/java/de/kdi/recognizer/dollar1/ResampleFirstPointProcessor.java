@@ -1,4 +1,4 @@
-package de.kdi.recognizer.$1;
+package de.kdi.recognizer.dollar1;
 
 import java.util.List;
 

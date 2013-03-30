@@ -14,8 +14,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import de.kdi.pojo.Point;
-import de.kdi.recognizer.$1.ResampleFirstPointProcessor;
-import de.kdi.recognizer.$1.ResampleLastPointProcessor;
+import de.kdi.recognizer.dollar1.ResampleFirstPointProcessor;
+import de.kdi.recognizer.dollar1.ResampleLastPointProcessor;
 
 public class TestPointProcessorForDollar1Alogithm {
 

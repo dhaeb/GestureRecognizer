@@ -24,7 +24,7 @@ import de.kdi.pojo.TemplateCollection;
 
 public class GestureTemplateCreator {
 
-	public static String addTemplate(List<Point> points, double squareSize, int N){
+	public static String addTemplate(List<Point> points){
 		String templateName = "";
 	
 		JPanel panel = new JPanel(new MigLayout("", "[][grow][left, fill]", ""));
@@ -47,12 +47,12 @@ public class GestureTemplateCreator {
 			//Check input
 			if(!nameText.getText().equals("")){
 				//Create the templates in both files based on the raw input points
-				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, true), "ResampledFirstTemplates.txt");
-				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, squareSize, N, false), "ResampledLastTemplates.txt");
+				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, true), "ResampledFirstTemplates.txt");
+				GestureTemplateCreator.addTemplateToFile(new GestureTemplate(nameText.getText(), points, false), "ResampledLastTemplates.txt");
 				
 				TemplateCollection templates = new TemplateCollection();
-				GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, templates.resampledFirstTemplates);
-				GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, templates.resampledLastTemplates);
+				GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", templates.resampledFirstTemplates);
+				GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", templates.resampledLastTemplates);
 				
 				String gestureNames = GestureTemplateCreator.getUniqueGesturesNames(templates.resampledFirstTemplates);
 				GestureRecognizerMain.TEMPLATES = templates;
@@ -102,7 +102,7 @@ public class GestureTemplateCreator {
 		return gestures.substring(0, gestures.length()-2);
 	}
 
-	static void readTemplates(String fileName, boolean resampledFirst, List<GestureTemplate> templates){
+	static void readTemplates(String fileName, List<GestureTemplate> templates){
 		try {
 			Scanner sc = new Scanner(new File(fileName));
 	
@@ -114,7 +114,7 @@ public class GestureTemplateCreator {
 	
 				if(cur.charAt(0) == '#'){
 					if(!curTemplate.equals("") && curPoints != null){
-						templates.add(new GestureTemplate(curTemplate, curPoints, resampledFirst));
+						templates.add(new GestureTemplate(curTemplate, curPoints));
 					}
 	
 					curTemplate = cur.substring(1);
@@ -130,17 +130,13 @@ public class GestureTemplateCreator {
 			
 			if(!curTemplate.equals("") && curPoints != null){
 				//Add the last template
-				templates.add(new GestureTemplate(curTemplate, curPoints, resampledFirst));
+				templates.add(new GestureTemplate(curTemplate, curPoints));
 			}
 		} catch (FileNotFoundException e) {
 			GestureRecognizerMain.LOG.warn("Can't find file.");
 		}
 	
-		if(resampledFirst){
-			GestureRecognizerMain.LOG.debug(templates.size()+" resampled first templates loaded.");
-		} else {
-			GestureRecognizerMain.LOG.debug(templates.size()+" resampled last templates loaded.");
-		}
+		GestureRecognizerMain.LOG.debug(templates.size()+" resampled templates loaded.");
 	}
 
 }

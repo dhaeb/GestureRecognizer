@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Logger;
 
 import de.kdi.gui.listener.ButtonListener;
 import de.kdi.gui.listener.MouseDrawingListener;
-import de.kdi.pojo.Gesture;
+import de.kdi.pojo.GestureResult;
 import de.kdi.pojo.Point;
 import de.kdi.pojo.TemplateCollection;
 import de.kdi.pojo.gui.DrawnPoints;
@@ -89,8 +89,8 @@ public class GestureRecognizerMain extends JPanel implements Observer {
                 RESAMPLED_LAST_LABEL = new JLabel();
 				//GestureRecognizerMain.templateLabel.setText("Available gestures: "
             	//Read in all the templates
-            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", true, TEMPLATES.resampledFirstTemplates);
-            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", false, TEMPLATES.resampledLastTemplates);
+            	GestureTemplateCreator.readTemplates("ResampledFirstTemplates.txt", TEMPLATES.resampledFirstTemplates);
+            	GestureTemplateCreator.readTemplates("ResampledLastTemplates.txt", TEMPLATES.resampledLastTemplates);
             	GestureTemplateCreator.getUniqueGesturesNames(TEMPLATES.resampledFirstTemplates);
             	
                 GestureRecognizerMain mainView = new GestureRecognizerMain();
@@ -141,7 +141,7 @@ public class GestureRecognizerMain extends JPanel implements Observer {
 	
 	private void recognizeGesture() {
 		GestureRecognizer recognizer = new GestureRecognizer(PRV_POINTS);
-		Gesture[] result = recognizer.recognize(TEMPLATES);
+		GestureResult[] result = recognizer.recognize(TEMPLATES);
 		RESAMPLED_FIRST_LABEL.setText("Resampled first " + result[0]);
 		RESAMPLED_LAST_LABEL.setText("Resampled last " + result[1]);
 	}

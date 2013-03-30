@@ -2,13 +2,13 @@ package de.kdi.recognizer;
 
 import java.util.List;
 
-import de.kdi.pojo.Gesture;
+import de.kdi.pojo.GestureResult;
 import de.kdi.pojo.GestureTemplate;
 import de.kdi.pojo.GestureUtil;
 import de.kdi.pojo.Point;
 import de.kdi.pojo.TemplateCollection;
-import de.kdi.recognizer.$1.ResampleFirstPointProcessor;
-import de.kdi.recognizer.$1.ResampleLastPointProcessor;
+import de.kdi.recognizer.dollar1.ResampleFirstPointProcessor;
+import de.kdi.recognizer.dollar1.ResampleLastPointProcessor;
 
 public class GestureRecognizer {
 
@@ -28,16 +28,16 @@ public class GestureRecognizer {
 		this.points = points;
 	}
 	
-    public Gesture[] recognize(TemplateCollection templates){
+    public GestureResult[] recognize(TemplateCollection templates){
     	List<Point> ptsResampledFirst = new ResampleFirstPointProcessor(points).preparePointsFor$1();
     	List<Point> ptsResampledLast = new ResampleLastPointProcessor(points).preparePointsFor$1();
-    	Gesture resampledFirst = recognize(ptsResampledFirst, templates.resampledFirstTemplates);
-    	Gesture resampledLast = recognize(ptsResampledLast, templates.resampledLastTemplates);
-    	return new Gesture[]{resampledFirst, resampledLast};
+    	GestureResult resampledFirst = recognize(ptsResampledFirst, templates.resampledFirstTemplates);
+    	GestureResult resampledLast = recognize(ptsResampledLast, templates.resampledLastTemplates);
+    	return new GestureResult[]{resampledFirst, resampledLast};
     }
     
-    private Gesture recognize(List<Point> points, List<GestureTemplate> templateList){
-    	Gesture resultingGesture = new Gesture("No match", 0.0f);
+    private GestureResult recognize(List<Point> points, List<GestureTemplate> templateList){
+    	GestureResult resultingGesture = new GestureResult("No match", 0.0f);
     	double bestMatch = Double.MAX_VALUE;
     	int indexOfBestMatch = -1;
     	    	
@@ -56,7 +56,7 @@ public class GestureRecognizer {
     	
     	if(indexOfBestMatch > -1 && score > GESTURE_MATCHING_LIMIT){
     		//GESTURE MATCHED!
-    		resultingGesture = new Gesture(templateList.get(indexOfBestMatch).name, score);
+    		resultingGesture = new GestureResult(templateList.get(indexOfBestMatch).name, score);
     	}
     	
     	return resultingGesture;

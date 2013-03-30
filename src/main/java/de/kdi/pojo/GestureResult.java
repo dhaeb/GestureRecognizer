@@ -1,11 +1,11 @@
 package de.kdi.pojo;
 
-public class Gesture{
+public class GestureResult{
 	
-	private String name;
-	private float score;
+	public String name;
+	public float score;
 	
-	public Gesture(String name, float score){
+	public GestureResult(String name, float score){
 		this.name = name;
 		this.score = score;
 	}
